@@ -1,2 +1,2 @@
 # img-limesurvey
-imgage of app limesurvey
+image of app limesurvey
