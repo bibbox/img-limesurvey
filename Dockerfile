@@ -1,7 +1,7 @@
 FROM php:7.4-apache
 
-ENV DOWNLOAD_URL https://download.limesurvey.org/latest-stable-release/limesurvey5.0.8+210712.zip
-#ENV DOWNLOAD_SHA256 f5d9950e3ec8d3dcc5d21183c2747ff17d936a7edfbb577e4dfff364e77101d9
+ENV DOWNLOAD_URL https://download.limesurvey.org/latest-stable-release/limesurvey5.0.10+210723.zip
+ENV DOWNLOAD_SHA256 a06a4148110528073ecb44fbea1b2ba500662521c483bea76f5e2c1d42f0ea3f
 
 # install the PHP extensions we need
 RUN apt-get update && apt-get install -y unzip libc-client-dev libfreetype6-dev libmcrypt-dev libpng-dev libjpeg-dev libldap2-dev zlib1g-dev libkrb5-dev libtidy-dev libzip-dev libsodium-dev && rm -rf /var/lib/apt/lists/* \
@@ -31,7 +31,7 @@ RUN { \
 
 RUN set -x; \
     curl -SL "$DOWNLOAD_URL" -o /tmp/lime.zip; \
-    #echo "$DOWNLOAD_SHA256 /tmp/lime.zip" | sha256sum -c -; \
+    echo "$DOWNLOAD_SHA256 /tmp/lime.zip" | sha256sum -c -; \
     unzip /tmp/lime.zip -d /tmp; \
     mv /tmp/lime*/* /var/www/html/; \
     mv /tmp/lime*/.[a-zA-Z]* /var/www/html/; \
