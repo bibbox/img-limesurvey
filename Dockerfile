@@ -62,12 +62,11 @@ VOLUME ["/var/www/html/upload"]
 VOLUME ["/var/www/html/application/config"]
 
 
-## Below Code moved to docker-compose file
-# COPY docker-entrypoint.sh /usr/local/bin/
-# RUN ln -s usr/local/bin/docker-entrypoint.sh /entrypoint.sh # backwards compat
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN ln -s usr/local/bin/docker-entrypoint.sh /entrypoint.sh # backwards compat
 
-# # ENTRYPOINT resets CMD
-# ENTRYPOINT ["docker-entrypoint.sh"]
+# ENTRYPOINT resets CMD
+ENTRYPOINT ["docker-entrypoint.sh"]
 
 
 CMD ["apache2-foreground"]
