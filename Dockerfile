@@ -10,14 +10,21 @@ RUN set -ex; \
         apt-get install --no-install-recommends -y \
         \
         libldap2-dev \
+        libfreetype6-dev \
+        libjpeg-dev \
+        libonig-dev \
         zlib1g-dev \
         libc-client-dev \
         libkrb5-dev \
         libpng-dev \
         libpq-dev \
+        libzip-dev \
+        libtidy-dev \
+        libsodium-dev \
         netcat \
+        curl \
         \
-        && apt-get autoclean; apt-get autoremove; \
+        && apt-get -y autoclean; apt-get -y autoremove; \
         rm -rf /var/lib/apt/lists/*
 
 # Link LDAP library for PHP ldap extension
@@ -26,8 +33,10 @@ RUN set -ex; \
 
 # Install PHP Plugins and Configure PHP imap plugin
 RUN set -ex; \
+        docker-php-ext-configure gd --with-freetype=/usr/include/ --with-jpeg=/usr && \
         docker-php-ext-configure imap --with-kerberos --with-imap-ssl && \
         docker-php-ext-install -j5 \
+        exif \
         gd \
         imap \
         ldap \
@@ -36,6 +45,8 @@ RUN set -ex; \
         pdo_mysql \
         pdo_pgsql \
         pgsql \
+        sodium \
+        tidy \
         zip
 
 ENV LIMESURVEY_VERSION=$version
@@ -60,7 +71,7 @@ RUN set -ex; \
         \
         tar xzvf "/tmp/${version}.tar.gz" --strip-components=1 -C /var/www/html/ && \
         rm -f "/tmp/${version}.tar.gz" && \
-        chown -R www-data:www-data /var/www/html
+        chown -R www-data:www-data /var/www/html /etc/apache2
 
 
 WORKDIR /var/www/html
