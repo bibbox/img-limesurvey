@@ -74,7 +74,7 @@ RUN set -ex; \
         chown -R www-data:www-data /var/www/html /etc/apache2
 
 
-WORKDIR /var/www/html
+#WORKDIR /var/www/html
 COPY entrypoint.sh /var/www/html/entrypoint.sh
 
 # ENTRYPOINT ["sh", "/var/www/html/entrypoint.sh"]
