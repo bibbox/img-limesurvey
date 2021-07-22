@@ -66,7 +66,7 @@ RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 
 # Download, unzip and chmod LimeSurvey from official GitHub repository
 RUN set -ex; \
-        curl -sSL "https://github.com/LimeSurvey/LimeSurvey/archive/${version}.tar.gz" --output /tmp/limesurvey.tar.gz && \
+        curl -sSL "https://github.com/LimeSurvey/LimeSurvey/archive/${version}.tar.gz" --output /tmp/${version}.tar.gz && \
         echo "${sha256_checksum}  /tmp/${version}.tar.gz" | sha256sum -c - && \
         \
         tar xzvf "/tmp/${version}.tar.gz" --strip-components=1 -C /var/www/html/ && \
