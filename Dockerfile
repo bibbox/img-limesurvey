@@ -1,72 +1,73 @@
-FROM php:7.4-apache
+## BBv4 Version
+FROM php:7.2-apache
+ARG version='5.0.9+210722'
+ARG sha256_checksum='2d9bc1ba0874f462bac6c94cad16127d0d231e0a257d8e895578354d28a84812'
 
-ENV DOWNLOAD_URL https://download.limesurvey.org/latest-stable-release/limesurvey5.0.10+210723.zip
-ENV DOWNLOAD_SHA256 a06a4148110528073ecb44fbea1b2ba500662521c483bea76f5e2c1d42f0ea3f
+# Install OS dependencies
+RUN set -ex; \
+        apt-get update && \
+        DEBIAN_FRONTEND=noninteractive \
+        apt-get install --no-install-recommends -y \
+        \
+        libldap2-dev \
+        zlib1g-dev \
+        libc-client-dev \
+        libkrb5-dev \
+        libpng-dev \
+        libpq-dev \
+        netcat \
+        \
+        && apt-get autoclean; apt-get autoremove; \
+        rm -rf /var/lib/apt/lists/*
 
-# install the PHP extensions we need
-RUN apt-get update && apt-get install -y unzip libc-client-dev libfreetype6-dev libmcrypt-dev libpng-dev libjpeg-dev libldap2-dev zlib1g-dev libkrb5-dev libtidy-dev libzip-dev libsodium-dev && rm -rf /var/lib/apt/lists/* \
-	&& docker-php-ext-configure gd --with-freetype=/usr/include/  --with-jpeg=/usr \
-	&& docker-php-ext-install gd mysqli pdo pdo_mysql opcache zip iconv tidy \
-    && docker-php-ext-configure ldap --with-libdir=lib/$(gcc -dumpmachine)/ \
-    && docker-php-ext-install ldap \
-    && docker-php-ext-configure imap --with-imap-ssl --with-kerberos \
-    && docker-php-ext-install imap \
-    && docker-php-ext-install sodium \
-    && pecl install mcrypt-1.0.3 \
-    && docker-php-ext-enable mcrypt \
-    && docker-php-ext-install exif
+# Link LDAP library for PHP ldap extension
+RUN set -ex; \
+        ln -fs /usr/lib/x86_64-linux-gnu/libldap.so /usr/lib/
 
-RUN a2enmod rewrite
+# Install PHP Plugins and Configure PHP imap plugin
+RUN set -ex; \
+        docker-php-ext-configure imap --with-kerberos --with-imap-ssl && \
+        docker-php-ext-install -j5 \
+        gd \
+        imap \
+        ldap \
+        mbstring \
+        pdo \
+        pdo_mysql \
+        pdo_pgsql \
+        pgsql \
+        zip
 
-# set recommended PHP.ini settings
-# see https://secure.php.net/manual/en/opcache.installation.php
-RUN { \
-		echo 'opcache.memory_consumption=128'; \
-		echo 'opcache.interned_strings_buffer=8'; \
-		echo 'opcache.max_accelerated_files=4000'; \
-		echo 'opcache.revalidate_freq=2'; \
-		echo 'opcache.fast_shutdown=1'; \
-		echo 'opcache.enable_cli=1'; \
-	} > /usr/local/etc/php/conf.d/opcache-recommended.ini
+ENV LIMESURVEY_VERSION=$version
 
-RUN set -x; \
-    curl -SL "$DOWNLOAD_URL" -o /tmp/lime.zip; \
-    echo "$DOWNLOAD_SHA256 /tmp/lime.zip" | sha256sum -c -; \
-    unzip /tmp/lime.zip -d /tmp; \
-    mv /tmp/lime*/* /var/www/html/; \
-    mv /tmp/lime*/.[a-zA-Z]* /var/www/html/; \
-    rm /tmp/lime.zip; \
-    rmdir /tmp/lime*; \
-    chown -R www-data:www-data /var/www/html; \
-    mkdir -p /var/lime/application/config; \
-    mkdir -p /var/lime/upload; \
-    mkdir -p /var/lime/plugins; \
-    cp -dpR /var/www/html/application/config/* /var/lime/application/config; \
-    cp -dpR /var/www/html/upload/* /var/lime/upload; \
-    cp -dpR /var/www/html/plugins/* /var/lime/plugins
+# Apache configuration
+RUN a2enmod headers rewrite remoteip; \
+        {\
+        echo RemoteIPHeader X-Real-IP ;\
+        echo RemoteIPTrustedProxy 10.0.0.0/8 ;\
+        echo RemoteIPTrustedProxy 172.16.0.0/12 ;\
+        echo RemoteIPTrustedProxy 192.168.0.0/16 ;\
+        } > /etc/apache2/conf-available/remoteip.conf;\
+        a2enconf remoteip
 
-#Set PHP defaults for Limesurvey (allow bigger uploads)
-RUN { \
-		echo 'memory_limit=256M'; \
-		echo 'upload_max_filesize=128M'; \
-		echo 'post_max_size=128M'; \
-		echo 'max_execution_time=120'; \
-        echo 'max_input_vars=10000'; \
-        echo 'date.timezone=UTC'; \
-	} > /usr/local/etc/php/conf.d/uploads.ini
+# Use the default production configuration
+RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 
-VOLUME ["/var/www/html/plugins"]
-VOLUME ["/var/www/html/upload"]
-
-#ensure that the config is persisted especially for security.php
-VOLUME ["/var/www/html/application/config"]
-
-
-COPY docker-entrypoint.sh /docker-entrypoint.sh
-#RUN ln -s usr/local/bin/docker-entrypoint.sh /entrypoint.sh # backwards compat
-
-# ENTRYPOINT resets CMD
-ENTRYPOINT ["/docker-entrypoint.sh"]
+# Download, unzip and chmod LimeSurvey from official GitHub repository
+RUN set -ex; \
+        curl -sSL "https://github.com/LimeSurvey/LimeSurvey/archive/${version}.tar.gz" --output /tmp/limesurvey.tar.gz && \
+        echo "${sha256_checksum}  /tmp/${version}.tar.gz" | sha256sum -c - && \
+        \
+        tar xzvf "/tmp/${version}.tar.gz" --strip-components=1 -C /var/www/html/ && \
+        rm -f "/tmp/${version}.tar.gz" && \
+        chown -R www-data:www-data /var/www/html
 
 
-CMD ["apache2-foreground"]
+WORKDIR /var/www/html
+COPY entrypoint.sh /var/www/html/entrypoint.sh
+
+# ENTRYPOINT ["sh", "/var/www/html/entrypoint.sh"]
+
+CMD ["bash", "/var/www/html/entrypoint.sh"]
+
+# CMD ["apache2-foreground"]
