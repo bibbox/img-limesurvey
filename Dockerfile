@@ -1,7 +1,7 @@
+## BBv4 Version
 FROM php:7.4-apache
-
-ENV DOWNLOAD_URL https://download.limesurvey.org/latest-stable-release/limesurvey5.0.10+210723.zip
-ENV DOWNLOAD_SHA256 a06a4148110528073ecb44fbea1b2ba500662521c483bea76f5e2c1d42f0ea3f
+ARG limesurvey_version='5.0.10+210723'
+ARG sha256_checksum='a06a4148110528073ecb44fbea1b2ba500662521c483bea76f5e2c1d42f0ea3f'
 
 # install the PHP extensions we need
 RUN apt-get update && apt-get install -y unzip libc-client-dev libfreetype6-dev libmcrypt-dev libpng-dev libjpeg-dev libldap2-dev zlib1g-dev libkrb5-dev libtidy-dev libzip-dev libsodium-dev && rm -rf /var/lib/apt/lists/* \
@@ -29,9 +29,10 @@ RUN { \
 		echo 'opcache.enable_cli=1'; \
 	} > /usr/local/etc/php/conf.d/opcache-recommended.ini
 
+# Download, unzip and chmod LimeSurvey from official source
 RUN set -x; \
-    curl -SL "$DOWNLOAD_URL" -o /tmp/lime.zip; \
-    echo "$DOWNLOAD_SHA256 /tmp/lime.zip" | sha256sum -c -; \
+    curl -sSL "https://download.limesurvey.org/latest-stable-release/limesurvey${limesurvey_version}.zip" -o /tmp/lime.zip; \
+    echo "${sha256_checksum} /tmp/lime.zip" | sha256sum -c -; \
     unzip /tmp/lime.zip -d /tmp; \
     mv /tmp/lime*/* /var/www/html/; \
     mv /tmp/lime*/.[a-zA-Z]* /var/www/html/; \
@@ -47,10 +48,10 @@ RUN set -x; \
 
 #Set PHP defaults for Limesurvey (allow bigger uploads)
 RUN { \
-		echo 'memory_limit=256M'; \
-		echo 'upload_max_filesize=128M'; \
-		echo 'post_max_size=128M'; \
-		echo 'max_execution_time=120'; \
+        echo 'memory_limit=256M'; \
+        echo 'upload_max_filesize=128M'; \
+        echo 'post_max_size=128M'; \
+        echo 'max_execution_time=120'; \
         echo 'max_input_vars=10000'; \
         echo 'date.timezone=UTC'; \
 	} > /usr/local/etc/php/conf.d/uploads.ini
@@ -62,11 +63,8 @@ VOLUME ["/var/www/html/upload"]
 VOLUME ["/var/www/html/application/config"]
 
 
-COPY docker-entrypoint.sh /docker-entrypoint.sh
-#RUN ln -s usr/local/bin/docker-entrypoint.sh /entrypoint.sh # backwards compat
 
-# ENTRYPOINT resets CMD
-ENTRYPOINT ["/docker-entrypoint.sh"]
-
-
+COPY entrypoint.sh /var/www/html/entrypoint.sh
+RUN ["chmod", "+x", "/var/www/html/entrypoint.sh"]
+ENTRYPOINT [ "/var/www/html/entrypoint.sh" ]
 CMD ["apache2-foreground"]
