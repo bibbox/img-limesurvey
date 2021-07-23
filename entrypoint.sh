@@ -53,8 +53,10 @@ if [[ "$1" == apache2* ]] || [ "$1" == php-fpm ]; then
 		exit 1
 	fi
 
-    echo >&2 "Copying default container default config files into config volume..."
-    cp -dR /var/lime/application/config/* application/config
+    if ! [ -e application/config/config-defaults.php ]; then
+        echo >&2 "No config-defaults.php file in $(pwd) Copying defaults..."
+        cp -dR /var/lime/application/config/* application/config
+    fi
 
     if ! [ -e plugins/index.html ]; then
         echo >&2 "No index.html file in plugins dir in $(pwd) Copying defaults..."
@@ -65,6 +67,7 @@ if [[ "$1" == apache2* ]] || [ "$1" == php-fpm ]; then
         echo >&2 "No index.html file upload dir in $(pwd) Copying defaults..."
         cp -dR /var/lime/upload/* upload
     fi
+
 
     if ! [ -e application/config/config.php ]; then
         echo >&2 "No config file in $(pwd) Copying default config file..."
@@ -97,7 +100,7 @@ EOPHP
     set_config() {
         key="$1"
         value="$2"
-        sed -i "/'$key'/s>\(.*\)>$value,1"  application/config/config.php
+        sed -i "/'$key'/s/>\(.*\)/>$value,/1"  application/config/config.php
     }
 
     set_config 'connectionString' "'mysql:host=$LIMESURVEY_DB_HOST;port=3306;dbname=$LIMESURVEY_DB_NAME;'"
@@ -130,14 +133,18 @@ EOPHP
 	DBSTATUS=$(TERM=dumb php -- "$LIMESURVEY_DB_HOST" "$LIMESURVEY_DB_USER" "$LIMESURVEY_DB_PASSWORD" "$LIMESURVEY_DB_NAME" "$LIMESURVEY_TABLE_PREFIX" "$MYSQL_SSL_CA" <<'EOPHP'
 <?php
 // database might not exist, so let's try creating it (just to be safe)
+
 error_reporting(E_ERROR | E_PARSE);
+
 $stderr = fopen('php://stderr', 'w');
+
 list($host, $socket) = explode(':', $argv[1], 2);
 $port = 0;
 if (is_numeric($socket)) {
         $port = (int) $socket;
         $socket = null;
 }
+
 $maxTries = 10;
 do {
     $con = mysqli_init();
@@ -154,19 +161,25 @@ do {
                 sleep(3);
         }
 } while (!$mysql);
+
 if (!$con->query('CREATE DATABASE IF NOT EXISTS `' . $con->real_escape_string($argv[4]) . '`')) {
         fwrite($stderr, "\n" . 'MySQL "CREATE DATABASE" Error: ' . $con->error . "\n");
         $con->close();
         exit(1);
 }
+
 $con->select_db($con->real_escape_string($argv[4]));
+
 $inst = $con->query("SELECT * FROM `" . $con->real_escape_string($argv[5]) . "users" . "`");
+
 $con->close();
+
 if ($inst->num_rows > 0) {
         exit("DBEXISTS");
 } else {
         exit(0);
 }
+
 EOPHP
 )
 
