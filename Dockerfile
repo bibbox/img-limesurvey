@@ -1,7 +1,7 @@
 ## BBv4 Version
 FROM php:7.4-apache
-ARG limesurvey_version='5.0.10+210723'
-ARG sha256_checksum='a06a4148110528073ecb44fbea1b2ba500662521c483bea76f5e2c1d42f0ea3f'
+ARG limesurvey_version='5.6.0+230116'
+ARG sha256_checksum='5cc879f3cf8aa8e6f6cab4f5a460e1c386de0e9e002caf969688442870d0f9a4'
 
 # install the PHP extensions we need
 RUN apt-get update && apt-get install -y unzip libc-client-dev libfreetype6-dev libmcrypt-dev libpng-dev libjpeg-dev libldap2-dev zlib1g-dev libkrb5-dev libtidy-dev libzip-dev libsodium-dev && rm -rf /var/lib/apt/lists/* \
